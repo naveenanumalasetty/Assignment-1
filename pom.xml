@@ -37,7 +37,7 @@
 						<muleVersion>4.4.0</muleVersion>
 						<username>naveen_1999</username>
 						<password>Naveen@201999</password>
-						<applicationName>g13-api-product</applicationName>
+						<applicationName>g13-api-product1</applicationName>
 						<environment>Sandbox</environment>
 						<region>us-east-2</region>
 						<workers>1</workers>
