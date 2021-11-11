@@ -1,0 +1,15 @@
+%dw 2.0
+
+type auto_86960212_e427_4e9b_b1f4_a7020174f164_Input_Payload = {
+  country: String, 
+  user_id: String, 
+  phone: Number, 
+  city: String, 
+  street: String, 
+  name: String, 
+  state: String, 
+  postal: String, 
+  email: String, 
+  _?: Any
+}
+

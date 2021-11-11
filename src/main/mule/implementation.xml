@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:inventory-order-api="http://www.mulesoft.org/schema/mule/inventory-order-api" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/inventory-order-api http://www.mulesoft.org/schema/mule/inventory-order-api/current/mule-inventory-order-api.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<flow name="getOrders" doc:id="33f9f555-5c88-42b7-84df-320756377fde" >
+		<inventory-order-api:get-orders doc:name="Get orders" doc:id="02c76b82-af4b-472d-89d1-b19444df2043" config-ref="Inventory_order_api_Config" order-id="#[attributes.queryParams.order_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+	</flow>
+	<flow name="createOrder" doc:id="e35e3d79-66f1-49b2-9b7b-3398be28f87a" >
+		<inventory-order-api:create-order doc:name="Create order" doc:id="df764de2-56e0-4ed0-9552-20221c41f417" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+	</flow>
+	<flow name="updateOrder" doc:id="a03a9f82-13a6-40c3-a22e-687d14d79bf9" >
+		<inventory-order-api:update-order-by-order-id doc:name="Update order by order id" doc:id="4e51fe68-f29e-4911-ac32-eabffdb98a94" config-ref="Inventory_order_api_Config" order-id="#[attributes.queryParams.order_id]"/>
+	</flow>
+	<flow name="createUser" doc:id="a3d1abe9-1582-4765-a4d6-07a34588ec54" >
+		<inventory-order-api:create-user doc:name="Create user" doc:id="2291e2ec-940c-4222-ab8c-ee2965e5722c" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+	</flow>
+	<flow name="updateUser" doc:id="86960212-e427-4e9b-b1f4-a7020174f164" >
+		<inventory-order-api:update-users doc:name="Update users" doc:id="7413e4eb-83b9-4b05-b860-13e67c1daf8b" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+	</flow>
+	<flow name="deleteUser" doc:id="1ab54f7b-58a0-44af-aa93-4249ab61c789" >
+		<inventory-order-api:delete-user-by-user-id doc:name="Delete user by user id" doc:id="9ca5b729-0f9c-4380-8746-d19607a293c2" config-ref="Inventory_order_api_Config" user-id="#[attributes.uriParams.user_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+	</flow>
+	<flow name="addWishlist" doc:id="760b4700-a4fa-4f67-9391-831a5e32ba06" >
+		<inventory-order-api:create-wishlist doc:name="Create wishlist" doc:id="b357cf17-2d53-4cd2-997d-5f0a001fcefa" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+	</flow>
+	<flow name="S3-MySQLDB(Inventory_Data)" doc:id="7693924b-fe7b-451d-8335-c61ff8703e6f" >
+		<scheduler doc:name="Scheduler for Inventory Data" doc:id="f3ca456e-e928-4536-972e-3ff55405218d" >
+			<scheduling-strategy >
+				<cron expression="0 0 3 1/1 * ? *" timeZone="EST" />
+			</scheduling-strategy>
+		</scheduler>
+		<inventory-order-api:get-inventories doc:name="Get inventories" doc:id="703e80d7-23fe-4864-85a7-68b5a6bcfe79" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+		<foreach doc:name="For Each" doc:id="f58d7a08-200f-4f12-997d-c826486355c2" >
+			<inventory-order-api:create-staging doc:name="Create staging" doc:id="367fc2a0-772d-4fba-bdc8-55014d22f4ac" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+		</foreach>
+		<s3:get-object doc:name="Get object" doc:id="1a1c7772-0d40-46b0-bc15-c94d2e4649d0" config-ref="Amazon_S3_Configuration" bucketName="${s3.bucketName}" key="${s3.Key1}"/>
+		<ee:transform doc:name="CSV to JSON" doc:id="b8ac4020-a32c-4958-bd87-c97e9f1c2a41">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="bab8a01b-0fca-4679-9977-fe60d59d753b" >
+			<ee:transform doc:name="Object Transformation" doc:id="50dc5cb1-c93e-487f-b3be-add1001deac8" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	price_for_each: payload.price_for_each as Number,
+	item_id: payload.item_id,
+	item_name: payload.item_name,
+	aquantity: payload.aquantity as Number
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<inventory-order-api:create-inventory doc:name="Create inventory" doc:id="aa7cbd9d-8c26-43dc-897e-eb89203a5080" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+		</foreach>
+	</flow>
+	<flow name="S3-Salesforce(Accounts_Data)" doc:id="b9d32bd9-008a-4a87-a2e2-0794c3cde553" >
+		<scheduler doc:name="Scheduler for User Data" doc:id="e067adcd-85e6-4f89-b1dd-e4ecc53a98d4" >
+			<scheduling-strategy >
+				<cron expression="0 0 3 1/1 * ? *" timeZone="EST" />
+			</scheduling-strategy>
+		</scheduler>
+		<s3:get-object doc:name="Get object" doc:id="7864abe3-e04e-4a7c-9eb4-a3d8e28bcb08" config-ref="Amazon_S3_Configuration" bucketName="${s3.bucketName}" key="${s3.Key2}"/>
+		<ee:transform doc:name="TXT to JSON" doc:id="0f8c7ba5-e74f-4cf2-953c-bbf98aae2c49" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Splitting each record" doc:id="93df8fd7-12aa-4eff-94b8-9c8c0844b40f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload splitBy("\n")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="implementationBatch_Job" doc:id="a56c2ae5-8579-4291-bac9-c78618b2c0f1" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="b27ca89d-e8f8-4b48-acbd-61c5c7e80790" >
+					<ee:transform doc:name="Splitting each column" doc:id="f6d7f99e-d571-4baf-a7cd-8f73cf6419cc" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload splitBy(/[,]/)]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<ee:transform doc:name="Object Formatting" doc:id="73c338d8-1f46-4e5a-9ab9-996a3bc7f3c9" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	user_id: payload[0],
+	name: payload[1],
+	phone: payload[2] as Number,
+	email: payload[3],
+	city: payload[4],
+	country: payload[5],
+	state: payload[6],
+	street: payload[7],
+	postal:payload[8] replace /[\r]/ with("")
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<inventory-order-api:update-users doc:name="Update users" doc:id="9afb4088-b8eb-4532-8566-7e0d69cea7fd" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}"/>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="2f5cbbb8-e0ef-4f2f-a597-b8b224f1b688" message="#[payload]"/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+	<flow name="QuantityWishlistNotification" doc:id="94ae46b8-bacc-4489-8938-530973944038" >
+		<scheduler doc:name="Scheduler for Item Stock Notifications" doc:id="a9f6f11a-c278-4485-9026-1da904f8c5ab" >
+			<scheduling-strategy >
+				<cron expression="0 0 5 1/1 * ? *" timeZone="EST" />
+			</scheduling-strategy>
+		</scheduler>
+		<inventory-order-api:get-inventories doc:name="Get inventories" doc:id="04b18528-c330-4cad-b909-0de056573cd5" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="var1" targetValue="#[output application/json --- payload]"/>
+		<inventory-order-api:get-stagings doc:name="Get stagings" doc:id="0ae01c7b-307e-4c41-8947-70f2fc67a601" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="var2" targetValue="#[output application/json --- payload]"/>
+		<set-payload value="#[vars.var2]" doc:name="Set Payload" doc:id="9b07edef-d303-428c-96dd-c17bb0f86797" />
+		<set-variable value="#[output application/json --- 0]" doc:name="count = 0" doc:id="b3b6abbd-8d07-41a4-80e6-3468221aa405" variableName="count"/>
+		<foreach doc:name="For Each" doc:id="817dd5c6-a57a-4bc7-8fe2-f4ae75a02f47" >
+			<choice doc:name="Choice" doc:id="d529b360-49ee-4ee3-ae17-79ade84b13c8">
+						<when expression="#[vars.var1[vars.count].aquantity != vars.var2[vars.count].aquantity]">
+							<choice doc:name="Choice" doc:id="02b9a2cf-ecb2-4fc6-b560-8cc6fb7691f5">
+								<when expression="#[vars.var2[vars.count].aquantity == 0]">
+							<inventory-order-api:get-wishlists doc:name="Get wishlists" doc:id="2588d059-2c62-43af-987e-e932bab206c5" config-ref="Inventory_order_api_Config" item-id="#[vars.var1[vars.count].item_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" targetValue="#[output application/json --- payload]" />
+							<foreach doc:name="For Each" doc:id="8b519878-bfac-4f5a-876d-6164483050ab">
+								<inventory-order-api:get-inventory-by-item-id doc:name="Get inventory by item id" doc:id="d5b6f1fa-d7c2-4aca-97ed-27faf95bba2d" config-ref="Inventory_order_api_Config" item-id="#[payload.item_id]" target="items" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" targetValue="#[output application/json --- payload.item_name]" />
+								<inventory-order-api:get-user-by-user-id doc:name="Get user by user id" doc:id="3ab7fc83-92a8-4168-bc8e-aa200535a8d4" config-ref="Inventory_order_api_Config" user-id="#[payload.user_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="users" targetValue="#[output application/json --- payload.Email__c]"/>
+								<email:send doc:name="Send" doc:id="2834f667-2e41-44be-94b1-5f01fad2e031" config-ref="Email_SMTP" fromAddress="naveen.a.anumalasetti@apisero.com" subject="Updates with Item Stock on Wishlist">
+									<email:to-addresses >
+										<email:to-address value="#[vars.users[0]]" />
+									</email:to-addresses>
+									<email:body contentType="text/html">
+										<email:content ><![CDATA[#[vars.items[0] ++ " is Now Available"]]]></email:content>
+									</email:body>
+								</email:send>
+									</foreach>
+								</when>
+								<when expression="#[vars.var1[vars.count].aquantity == 0]">
+							<inventory-order-api:get-wishlists doc:name="Get wishlists" doc:id="3a1ab33d-669d-437d-b233-46e25721882e" config-ref="Inventory_order_api_Config" item-id="#[vars.var1[vars.count].item_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" targetValue="#[output application/json --- payload]" />
+							<foreach doc:name="For Each" doc:id="5df6957c-9b7b-4543-92be-ebfe4642e105" >
+								<inventory-order-api:get-inventory-by-item-id doc:name="Get inventory by item id" doc:id="46434b7c-2080-48b8-8e5d-265a48ad69ad" config-ref="Inventory_order_api_Config" item-id="#[payload.item_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="items" targetValue="#[output application/json --- payload.item_name]"/>
+								<inventory-order-api:get-user-by-user-id doc:name="Get user by user id" doc:id="ba1dccf0-07f5-4f52-85f8-5811995abfc7" config-ref="Inventory_order_api_Config" user-id="#[payload.user_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="users" targetValue="#[output application/json --- payload.Email__c]" />
+								<email:send doc:name="Send" doc:id="e3c16352-f0ab-4229-bdfb-19a579579a5a" config-ref="Email_SMTP" fromAddress="naveen.a.anumalasetti@apisero.com" subject="Updates with Item Stock on Wishlist">
+									<email:to-addresses>
+										<email:to-address value="#[vars.users[0]]" />
+									</email:to-addresses>
+									<email:body contentType="text/html">
+										<email:content><![CDATA[#[vars.items[0] ++ " is Out of Stock"]]]></email:content>
+									</email:body>
+								</email:send>
+							</foreach>
+								</when>
+								<otherwise>
+									<logger level="INFO" doc:name="Logger" doc:id="282f7ed8-69cb-42b4-bc10-a78af5d0fa3a" message="Default" />
+								</otherwise>
+							</choice>
+						</when>
+						<otherwise>
+							<logger level="INFO" doc:name="Logger" doc:id="89fb523f-c964-4ff2-aff0-63db5cca390d" message="Default" />
+						</otherwise>
+					</choice>
+			<set-variable value="#[vars.count+1]" doc:name="count ++" doc:id="3deec773-5d5c-4be8-9c96-1bef2e2f8ce9" variableName="count" />
+			<set-payload value="#[vars.var2]" doc:name="Set Payload" doc:id="c96af8a8-cc9f-476c-ad12-a1293e767b74" />
+		</foreach>
+	</flow>
+	<flow name="PriceWishlistNotification" doc:id="f83d6194-462f-408d-85b9-a954985b2eef" >
+		<scheduler doc:name="Scheduler for Item Price Notification" doc:id="8f16d226-c821-4f0c-8410-16bac1559bad" >
+			<scheduling-strategy >
+				<cron expression="0 0 5 1/1 * ? *" timeZone="EST" />
+			</scheduling-strategy>
+		</scheduler>
+		<inventory-order-api:get-inventories doc:name="Get inventories" doc:id="4eddeb95-d297-41b9-8fc7-e65558239f00" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="var1" targetValue="#[output application/json --- payload]" />
+		<inventory-order-api:get-stagings doc:name="Get stagings" doc:id="2b77a9d5-5cc1-40d7-a54c-1c970505c742" config-ref="Inventory_order_api_Config" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="var2" targetValue="#[output application/json --- payload]" />
+		<set-payload value="#[vars.var2]" doc:name="Set Payload" doc:id="4ebff585-be52-468a-8d7f-363796252621" />
+		<set-variable value="#[output application/json --- 0]" doc:name="count = 0" doc:id="880cf20f-b966-4d15-940b-a9c2d1d9e83f" variableName="count" />
+		<foreach doc:name="For Each" doc:id="c833593a-9498-4774-abd1-c421641a30bd" >
+			<choice doc:name="Choice" doc:id="89899672-1128-4bee-bfdb-6f98e208ac3f" >
+				<when expression="#[vars.var1[vars.count].price_for_each &gt; vars.var2[vars.count].price_for_each]" >
+					<inventory-order-api:get-wishlists doc:name="Get wishlists" doc:id="cd789a18-da8e-43c4-8f5b-f8b6c71a851e" config-ref="Inventory_order_api_Config" item-id="#[vars.var1[vars.count].item_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" targetValue="#[output application/json --- payload]" />
+					<foreach doc:name="For Each" doc:id="31c6ac76-f11a-4bb2-8fb6-238ebb474993" >
+						<inventory-order-api:get-inventory-by-item-id doc:name="Get inventory by item id" doc:id="3a9743da-5db1-4df8-ad47-9c071222ce9a" config-ref="Inventory_order_api_Config" item-id="#[payload.item_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="items" targetValue="#[output application/json --- payload.item_name]"/>
+						<inventory-order-api:get-user-by-user-id doc:name="Get user by user id" doc:id="e0ef793e-2e01-4f34-9edc-806a5adb2938" config-ref="Inventory_order_api_Config" user-id="#[payload.user_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="users" targetValue="#[output application/json --- payload.Email__c]" />
+						<email:send doc:name="Send" doc:id="f7417996-f6c7-44bd-9bbe-060838d0cb10" config-ref="Email_SMTP" fromAddress="naveen.a.anumalasetti@apisero.com" subject="Updates with Item Price on Wishlist">
+							<email:to-addresses>
+								<email:to-address value="#[vars.users[0]]" />
+							</email:to-addresses>
+							<email:body contentType="text/html">
+								<email:content><![CDATA[#["Price of " ++ vars.items[0] ++ " has been Increased"]]]></email:content>
+							</email:body>
+						</email:send>
+					</foreach>
+				</when>
+				<when expression="#[vars.var1[vars.count].price_for_each &lt; vars.var2[vars.count].price_for_each]">
+					<inventory-order-api:get-wishlists doc:name="Get wishlists" doc:id="b9564fe2-47d8-4e2e-9efe-fba96a0daba6" config-ref="Inventory_order_api_Config" item-id="#[vars.var1[vars.count].item_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" targetValue="#[output application/json --- payload]" />
+					<foreach doc:name="For Each" doc:id="9c9d84e3-14da-4302-a92c-eee27ae5a6b5" >
+						<inventory-order-api:get-inventory-by-item-id doc:name="Get inventory by item id" doc:id="aa2f0f8e-4a85-4fde-8f33-aecb3c7d8aa6" config-ref="Inventory_order_api_Config" item-id="#[payload.item_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="items" targetValue="#[output application/json --- payload.item_name]" />
+						<inventory-order-api:get-user-by-user-id doc:name="Get user by user id" doc:id="584c65e5-5325-4ef3-8bc4-637c56134337" config-ref="Inventory_order_api_Config" user-id="#[payload.user_id]" client-id="${inventory.client_id}" client-secret="${inventory.client_secret}" target="users" targetValue="#[output application/json --- payload.Email__c]" />
+						<email:send doc:name="Send" doc:id="2449c6c9-1811-4443-ad9e-9eec839dba6b" config-ref="Email_SMTP" fromAddress="naveen.a.anumalasetti@apisero.com" subject="Updates with Item Price on Wishlist">
+							<email:to-addresses>
+								<email:to-address value="#[vars.users[0]]" />
+							</email:to-addresses>
+							<email:body contentType="text/html">
+								<email:content><![CDATA[#["Price of " ++ vars.items[0] ++ " has been Decreased"]]]></email:content>
+							</email:body>
+						</email:send>
+					</foreach>
+				</when>
+				<otherwise >
+					<logger level="INFO" doc:name="Logger" doc:id="aed2b5af-655d-431f-913a-5db155123f92" message="Default" />
+				</otherwise>
+			</choice>
+			<set-variable value="#[vars.count+1]" doc:name="count ++" doc:id="00599900-6af1-409a-a4f0-3edfc507b763" variableName="count" />
+			<set-payload value="#[vars.var2]" doc:name="Set Payload" doc:id="63ada168-fcac-4c05-ad7e-b8b440c87750" />
+		</foreach>
+	</flow>
+</mule>

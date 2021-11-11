@@ -1,0 +1,9 @@
+%dw 2.0
+
+type auto_33f9f555_5c88_42b7_84df_320756377fde_Output_Payload = {
+  user_id: String, 
+  order_id: Number, 
+  items: Array<{    quantity: Number,     item_id: String,     price: Number,     _?: Any  }>, 
+  _?: Any
+}
+

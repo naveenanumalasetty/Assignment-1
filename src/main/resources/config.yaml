@@ -1,0 +1,20 @@
+inventory:
+  host: "inventory-orders-api-navan.us-e2.cloudhub.io"
+  port: "80"
+  protocol: "HTTP"
+  basepath: "/"
+  client_id: "386640284b5945c6b8a6b8954ae443e3"
+  client_secret: "17E7e7cAfC20403cafCb9a0dE6e9a961"
+
+s3:
+  accessKey: "AKIAXLOAYZEX3HD6CNND"
+  secretKey: "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"
+  bucketName: "my-ecommerce-details"
+  Key1: "inventory/inventory_updates.csv"
+  Key2: "accounts/user_details.txt"
+  
+smtp:
+  host: "smtp.gmail.com"
+  port: "465"
+  user: "naveen.a.anumalasetti@apisero.com"
+  password: "Naveen@510"

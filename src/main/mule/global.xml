@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns:inventory-order-api="http://www.mulesoft.org/schema/mule/inventory-order-api"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/inventory-order-api http://www.mulesoft.org/schema/mule/inventory-order-api/current/mule-inventory-order-api.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="19dac7e9-857f-43e5-ab35-b9dd9318c51b" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<inventory-order-api:config name="Inventory_order_api_Config" doc:name="Inventory-order-api Config" doc:id="0c41d7a2-9c6e-4558-a4a4-397811f1d778" property_host="${inventory.host}" property_port="${inventory.port}" property_protocol="${inventory.protocol}" property_basePath="${inventory.basepath}" />
+	<configuration-properties doc:name="Configuration properties" doc:id="5e982788-1518-4489-8ebf-ee96b7060ba5" file="config.yaml" />
+	<s3:config name="Amazon_S3_Configuration" doc:name="Amazon S3 Configuration" doc:id="e4d49684-ebd5-42dc-bba4-17362d813226" >
+		<s3:basic-connection accessKey="${s3.accessKey}" secretKey="${s3.secretKey}" />
+	</s3:config>
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="5745e195-fc1c-4c47-a275-87f29104df33" >
+		<email:smtp-connection host="${smtp.host}" port="${smtp.port}" user="${smtp.user}" password="${smtp.password}" >
+			<email:properties >
+				<email:property key="mail.smtp.starttls.enable" value="true" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+</mule>
